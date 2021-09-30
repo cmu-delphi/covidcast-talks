@@ -1,0 +1,4 @@
+if [ -z "$1" ]
+then echo "Missing input folder name"
+else cp ${1%/}/talk.html docs/${1%/}.html
+fi 
