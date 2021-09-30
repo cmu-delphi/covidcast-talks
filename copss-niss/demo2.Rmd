@@ -1,0 +1,44 @@
+---
+title: "Forecast demo with DV signals"
+output:
+  html_document:
+    code_folding: hide
+---
+```{r, fig.width = 7, fig.height = 5, message = FALSE, warning = FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+load("demo2.rda")
+
+# Compute and plot median errors as function of number of days ahead
+err_by_lead = res %>%
+  drop_na() %>%                                       # Restrict to common time
+  mutate(err1 = err1 / err0, err2 = err2 / err0,
+         err3 = err3 / err0, err4 = err4 / err0) %>%  # Compute relative error
+                                                      # to strawman model
+  ungroup() %>%
+  select(-c(err0)) %>%
+  pivot_longer(names_to = "model", values_to = "err",
+               cols = -c(geo_value, time_value, lead)) %>%
+  mutate(model = factor(model, labels = c("Cases", 
+                                          "Cases + CHNG-DV",
+                                          "Cases + HSP-DV",
+                                          "Cases + both signals")),
+         time_period = ifelse(time_value <= "2020-10-15", 1, 2)) %>%
+  group_by(model, time_period, lead) %>%
+  summarize(err = median(err)) %>% 
+  ungroup()
+
+ggplot_colors = c("#FC4E07", "#00AFBB", "#E7B800")
+ggplot(err_by_lead %>% filter(time_period == 1), aes(x = lead, y = err)) + 
+  geom_line(aes(color = model)) + 
+  geom_point(aes(color = model)) + 
+  geom_hline(yintercept = err_by_lead %>% 
+               filter(time_period == 1, lead %in% 7, model == "Cases") %>% 
+               pull(err), linetype = 2, color = "gray") +
+  scale_color_manual(values = c("black", ggplot_colors)) +
+  labs(title = "Forecasting errors by number of days ahead",
+       subtitle = "From early May through October 15",
+       x = "Number of days ahead", y = "Median scaled error") +
+  theme_bw() + theme(legend.pos = "bottom", legend.title = element_blank())
+```
